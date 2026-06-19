@@ -1,0 +1,19 @@
+{
+  "name": "claims-ocr-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Claim-form OCR demo: PDF -> probe -> rasterize -> zonal Tesseract OCR -> field table. Runs in GitHub Actions, zero tokens, no local install.",
+  "scripts": {
+    "samples": "node src/generate-samples.js",
+    "start": "node src/run.js",
+    "demo": "node src/generate-samples.js && node src/run.js"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdf-to-png-converter": "^3.3.0",
+    "pdfjs-dist": "^4.2.67",
+    "sharp": "^0.33.5",
+    "tesseract.js": "^5.1.1"
+  }
+}
