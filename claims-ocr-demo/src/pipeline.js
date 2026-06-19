@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { rasterizePdf, STANDARD_FONTS } from "./rasterize.js";
+import { estImageTokens } from "./tokens.js";
 import { ZONES } from "./template.js";
 
 const CONF_FLAG = 60; // below this avg confidence -> human-in-the-loop / vision fallback
@@ -53,9 +54,11 @@ export async function process(pdfPath) {
     const { data } = await worker.recognize(crop);
     const value = (data.text || "").replace(/\s+/g, " ").trim();
     const confidence = Math.round((data.confidence || 0) * 10) / 10;
-    result.fields[name] = { value, confidence };
+    // cropTokens = tokens if THIS box were escalated to a vision model
+    result.fields[name] = { value, confidence, cropTokens: estImageTokens(width, height) };
     if (confidence < CONF_FLAG) result.review.push(name);
   }
   await worker.terminate();
+  result.pageTokens = estImageTokens(W, Hh); // all-vision baseline (whole page)
   return result;
 }

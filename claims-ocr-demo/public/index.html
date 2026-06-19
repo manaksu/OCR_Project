@@ -42,6 +42,10 @@
   .issues li { margin:2px 0; }
   .rawtext { white-space:pre-wrap; background:#f3f2ec; padding:12px; border-radius:8px; font:12px ui-monospace,monospace; }
   .mt { margin-top:16px; }
+  td.muted { color:var(--muted); font-size:12px; }
+  tr.zero td.num { color:var(--ok); }
+  .tokensum { margin-top:10px; font-size:12px; color:var(--muted); }
+  .tokensum b { color:#23231f; }
 </style>
 </head>
 <body>
@@ -73,6 +77,21 @@ function validBadge(v) {
 }
 function money(n) { return "$" + Number(n).toFixed(2); }
 
+function renderTokens(t) {
+  if (!t) return "";
+  const rows = t.stages.map(s => `<tr class="${s.tokens===0?'zero':''}">
+    <td>${s.stage}</td><td class="num">${s.tokens}</td><td class="muted">${s.note}</td></tr>`).join("");
+  return `<div class="panel mt"><h2>Token usage by stage</h2>
+    <table>
+      <thead><tr><th>Stage</th><th class="num">Tokens</th><th>Note</th></tr></thead>
+      <tbody>${rows}
+        <tr class="total"><td>This pipeline (total)</td><td class="num">${t.total}</td><td></td></tr></tbody>
+    </table>
+    <div class="tokensum">All-vision baseline (whole page → VLM): <b>~${t.baselineFullPageVision}</b> tokens
+      &nbsp;·&nbsp; saved <b>${t.savedVsBaseline}</b> tokens/claim</div>
+  </div>`;
+}
+
 function renderTabs() {
   document.getElementById("tabs").innerHTML = Object.keys(SAMPLE_LABELS)
     .map(k => `<button class="tab ${k===current?'active':''}" data-k="${k}">${SAMPLE_LABELS[k]}</button>`).join("");
@@ -96,7 +115,8 @@ async function load() {
   if (d.textLayer) {
     el.innerHTML = `<div class="panel">
       <div class="banner ok">Text layer detected — no OCR, no tokens</div>
-      <h2>Extracted text</h2><div class="rawtext">${d.rawText.replace(/</g,"&lt;")}</div></div>`;
+      <h2>Extracted text</h2><div class="rawtext">${d.rawText.replace(/</g,"&lt;")}</div></div>`
+      + renderTokens(d.tokenUsage);
     return;
   }
 
@@ -128,7 +148,7 @@ async function load() {
     ${lineIssues.length ? `<ul class="issues">${lineIssues.map(i=>`<li>${i}</li>`).join("")}</ul>` : ""}
   </div>`;
 
-  el.innerHTML = header + charges;
+  el.innerHTML = header + charges + renderTokens(d.tokenUsage);
 }
 load();
 </script>

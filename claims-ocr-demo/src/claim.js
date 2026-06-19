@@ -1,6 +1,7 @@
 // Build a UI-friendly claim model from the OCR result + validation:
 // header fields, service lines with per-line charges, and a computed total.
 import { validateFields } from "./validate.js";
+import { buildTokenUsage } from "./tokens.js";
 
 export function buildClaimModel(name, ocr) {
   const model = { source: ocr.source, method: ocr.method, image: `/api/image/${name}` };
@@ -9,6 +10,7 @@ export function buildClaimModel(name, ocr) {
   if (!ocr.fields || !Object.keys(ocr.fields).length) {
     model.textLayer = true;
     model.rawText = ocr.raw_text ?? "";
+    model.tokenUsage = buildTokenUsage(ocr, []);
     return model;
   }
 
@@ -38,6 +40,7 @@ export function buildClaimModel(name, ocr) {
     },
   ];
   const totalCharge = serviceLines.reduce((sum, l) => sum + l.charge, 0);
+  const tokenUsage = buildTokenUsage(ocr, [...review]);
 
-  return { ...model, fields, serviceLines, totalCharge, needsReview: [...review] };
+  return { ...model, fields, serviceLines, totalCharge, needsReview: [...review], tokenUsage };
 }
