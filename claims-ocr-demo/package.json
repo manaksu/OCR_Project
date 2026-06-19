@@ -7,10 +7,12 @@
   "scripts": {
     "samples": "node src/generate-samples.js",
     "start": "node src/run.js",
-    "demo": "node src/generate-samples.js && node src/run.js"
+    "demo": "node src/generate-samples.js && node src/run.js",
+    "serve": "node src/generate-samples.js && node server.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.58",
+    "express": "^4.22.2",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.2.67",
     "sharp": "^0.33.5",

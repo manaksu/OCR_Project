@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claim OCR Review</title>
+<style>
+  :root { --line:#e2e2dd; --bg:#faf9f5; --ok:#1d7a4d; --okbg:#e7f4ec; --bad:#b3261e; --badbg:#fbeaea; --warn:#9a6a00; --warnbg:#fbf1da; --muted:#6b6b66; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif; color:#23231f; background:var(--bg); }
+  header { padding:16px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; font-weight:700; }
+  .tabs { display:flex; gap:8px; }
+  .tab { padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer; font-size:13px; }
+  .tab.active { background:#23231f; color:#fff; border-color:#23231f; }
+  .method { color:var(--muted); font-size:12px; margin-left:auto; }
+  main { display:grid; grid-template-columns:minmax(280px,1fr) minmax(360px,1.2fr); gap:20px; padding:20px 22px; align-items:start; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 12px; }
+  img.claim { width:100%; border:1px solid var(--line); border-radius:8px; display:block; }
+  .banner { padding:10px 12px; border-radius:8px; font-weight:600; margin-bottom:16px; }
+  .banner.ok { background:var(--okbg); color:var(--ok); }
+  .banner.bad { background:var(--badbg); color:var(--bad); }
+  .field { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .field:last-child { border-bottom:0; }
+  .field .label { color:var(--muted); width:120px; flex:none; font-size:12px; }
+  .field .val { font-weight:600; font-variant-numeric:tabular-nums; }
+  .chip { font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600; margin-left:auto; }
+  .chip.ok { background:var(--okbg); color:var(--ok); }
+  .chip.warn { background:var(--warnbg); color:var(--warn); }
+  .chip.bad { background:var(--badbg); color:var(--bad); }
+  .badge { font-size:11px; padding:2px 7px; border-radius:6px; font-weight:600; }
+  .badge.ok { background:var(--okbg); color:var(--ok); }
+  .badge.bad { background:var(--badbg); color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); font-size:13px; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.num, th.num { text-align:right; }
+  tr.invalid td { background:var(--badbg); }
+  tr.total td { font-weight:700; border-top:2px solid #23231f; border-bottom:0; }
+  .issues { color:var(--bad); font-size:12px; margin-top:6px; }
+  .issues li { margin:2px 0; }
+  .rawtext { white-space:pre-wrap; background:#f3f2ec; padding:12px; border-radius:8px; font:12px ui-monospace,monospace; }
+  .mt { margin-top:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Claim OCR Review</h1>
+  <div class="tabs" id="tabs"></div>
+  <div class="method" id="method"></div>
+</header>
+<main>
+  <div class="panel">
+    <h2>Claim image</h2>
+    <img class="claim" id="claimImg" alt="claim page" />
+  </div>
+  <div id="details"></div>
+</main>
+
+<script>
+const SAMPLE_LABELS = { good_scan:"Good scan", small_scan:"Small scan (low-res)", digital:"Digital PDF" };
+let current = "good_scan";
+
+function confChip(c) {
+  const cls = c >= 90 ? "ok" : c >= 60 ? "warn" : "bad";
+  return `<span class="chip ${cls}">conf ${c}</span>`;
+}
+function validBadge(v) {
+  if (v === true) return `<span class="badge ok">valid</span>`;
+  if (v === false) return `<span class="badge bad">invalid</span>`;
+  return "";
+}
+function money(n) { return "$" + Number(n).toFixed(2); }
+
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = Object.keys(SAMPLE_LABELS)
+    .map(k => `<button class="tab ${k===current?'active':''}" data-k="${k}">${SAMPLE_LABELS[k]}</button>`).join("");
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => { current = b.dataset.k; load(); });
+}
+
+function field(label, f) {
+  if (!f) return "";
+  return `<div class="field"><span class="label">${label}</span>
+    <span class="val">${f.value || "—"}</span> ${validBadge(f.valid)} ${confChip(f.confidence)}</div>`;
+}
+
+async function load() {
+  renderTabs();
+  document.getElementById("claimImg").src = `/api/image/${current}?t=${Date.now()}`;
+  const r = await fetch(`/api/result/${current}`);
+  const d = await r.json();
+  document.getElementById("method").textContent = d.method || "";
+  const el = document.getElementById("details");
+
+  if (d.textLayer) {
+    el.innerHTML = `<div class="panel">
+      <div class="banner ok">Text layer detected — no OCR, no tokens</div>
+      <h2>Extracted text</h2><div class="rawtext">${d.rawText.replace(/</g,"&lt;")}</div></div>`;
+    return;
+  }
+
+  const review = d.needsReview || [];
+  const banner = review.length
+    ? `<div class="banner bad">⚠ ${review.length} field(s) need review: ${review.join(", ")}</div>`
+    : `<div class="banner ok">✓ All checks passed</div>`;
+
+  const f = d.fields;
+  const header = `<div class="panel">${banner}<h2>Header fields</h2>
+    ${field("Insured ID", f.box1a_insured_id)}
+    ${field("Patient", f.box2_patient_name)}
+    ${field("Billing NPI", f.box33_billing_npi)}</div>`;
+
+  const rows = d.serviceLines.map(l => `
+    <tr class="${l.valid===false?'invalid':''}">
+      <td>${l.line}</td><td>${l.pos}</td><td>${l.cpt}</td><td>${l.icd}</td>
+      <td class="num">${l.units}</td><td class="num">${money(l.charge)}</td>
+      <td>${validBadge(l.valid)}</td></tr>`).join("");
+  const lineIssues = d.serviceLines.flatMap(l => l.issues || []);
+  const charges = `<div class="panel mt"><h2>Service lines &amp; charges</h2>
+    <table>
+      <thead><tr><th>#</th><th>POS</th><th>CPT</th><th>ICD-10</th>
+        <th class="num">Units</th><th class="num">Charge</th><th>Status</th></tr></thead>
+      <tbody>${rows}
+        <tr class="total"><td colspan="5">Total charges</td>
+          <td class="num">${money(d.totalCharge)}</td><td></td></tr></tbody>
+    </table>
+    ${lineIssues.length ? `<ul class="issues">${lineIssues.map(i=>`<li>${i}</li>`).join("")}</ul>` : ""}
+  </div>`;
+
+  el.innerHTML = header + charges;
+}
+load();
+</script>
+</body>
+</html>
