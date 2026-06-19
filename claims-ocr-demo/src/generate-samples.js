@@ -3,9 +3,9 @@
 //   good_scan.pdf  -> hi-res image-only "scan" (legible)
 //   small_scan.pdf -> lo-res image-only "scan" (under-resolution; OCR struggles)
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { pdfToPng } from "pdf-to-png-converter";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { rasterizePdf } from "./rasterize.js";
 import { ZONES, PAGE_W_PT, PAGE_H_PT } from "./template.js";
 
 const H = PAGE_H_PT;
@@ -43,11 +43,6 @@ async function wrapImageAsPdf(pngBuffer) {
   return Buffer.from(await pdf.save());
 }
 
-async function rasterize(pdfBuffer, viewportScale) {
-  const pages = await pdfToPng(pdfBuffer, { viewportScale });
-  return pages[0].content; // PNG buffer, in-memory
-}
-
 async function main() {
   const outDir = path.resolve("samples");
   await fs.mkdir(outDir, { recursive: true });
@@ -55,10 +50,10 @@ async function main() {
   const formPdf = await buildFormPdf();
   await fs.writeFile(path.join(outDir, "digital.pdf"), formPdf);
 
-  const hi = await rasterize(formPdf, 4.0); // ~2448px wide
+  const hi = await rasterizePdf(formPdf, 4.0); // ~2448px wide
   await fs.writeFile(path.join(outDir, "good_scan.pdf"), await wrapImageAsPdf(hi));
 
-  const lo = await rasterize(formPdf, 1.0); // ~612px wide (under-resolution)
+  const lo = await rasterizePdf(formPdf, 1.0); // ~612px wide (under-resolution)
   await fs.writeFile(path.join(outDir, "small_scan.pdf"), await wrapImageAsPdf(lo));
 
   const files = await fs.readdir(outDir);

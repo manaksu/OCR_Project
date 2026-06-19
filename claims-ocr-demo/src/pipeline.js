@@ -2,10 +2,10 @@
 // zonal crop (sharp) -> Tesseract OCR (tesseract.js) -> field table + confidence.
 // All local, zero LLM tokens. Low-confidence fields are flagged for review.
 import fs from "node:fs/promises";
-import { pdfToPng } from "pdf-to-png-converter";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { rasterizePdf, STANDARD_FONTS } from "./rasterize.js";
 import { ZONES } from "./template.js";
 
 const CONF_FLAG = 60; // below this avg confidence -> human-in-the-loop / vision fallback
@@ -14,7 +14,7 @@ const PSM = { box24_service_ln: "6" }; // 7 = single line (default), 6 = block
 async function textLayer(pdfPath) {
   try {
     const data = new Uint8Array(await fs.readFile(pdfPath));
-    const doc = await pdfjs.getDocument({ data, isEvalSupported: false, useSystemFonts: false }).promise;
+    const doc = await pdfjs.getDocument({ data, isEvalSupported: false, standardFontDataUrl: STANDARD_FONTS }).promise;
     const page = await doc.getPage(1);
     const tc = await page.getTextContent();
     return tc.items.map((i) => i.str).join(" ").replace(/\s+/g, " ").trim();
@@ -35,8 +35,7 @@ export async function process(pdfPath) {
   }
 
   // Scanned: rasterize the page, then OCR each zone
-  const pages = await pdfToPng(pdfPath, { viewportScale: 3.0 });
-  const png = pages[0].content;
+  const png = await rasterizePdf(pdfPath, 3.0);
   const meta = await sharp(png).metadata();
   const W = meta.width;
   const Hh = meta.height;
