@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { process as processClaim } from "./src/pipeline.js";
 import { buildClaimModel } from "./src/claim.js";
+import { processBundle } from "./src/bundle.js";
 import { rasterizePdf } from "./src/rasterize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,25 @@ app.get("/api/image/:name", async (req, res) => {
     res.type("png").send(png);
   } catch {
     res.status(500).end();
+  }
+});
+
+// --- Transplant bundle roll-up ---
+app.get("/api/bundle", async (_req, res) => {
+  try {
+    res.json(await processBundle("bundle"));
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get("/api/bundle/image/:doc", async (req, res) => {
+  const { doc } = req.params;
+  if (!/^[a-z0-9-]+$/i.test(doc)) return res.status(400).end();
+  try {
+    res.type("png").send(await rasterizePdf(`bundle/${doc}.pdf`, 1.6));
+  } catch {
+    res.status(404).end();
   }
 });
 

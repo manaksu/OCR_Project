@@ -2,6 +2,7 @@
 // header fields, service lines with per-line charges, and a computed total.
 import { validateFields } from "./validate.js";
 import { buildTokenUsage } from "./tokens.js";
+import { parseServiceLine } from "./serviceline.js";
 
 export function buildClaimModel(name, ocr) {
   const model = { source: ocr.source, method: ocr.method, image: `/api/image/${name}` };
@@ -25,16 +26,16 @@ export function buildClaimModel(name, ocr) {
 
   // Parse the service line(s). Box 24 holds: POS CPT ICD CHARGE UNITS.
   // (One line in this demo; a real CMS-1500 has up to 6 rows -> array extends.)
-  const tokens = (ocr.fields.box24_service_ln?.value || "").trim().split(/\s+/);
+  const parsed = parseServiceLine(ocr.fields.box24_service_ln?.value);
   const lineValidation = validation.box24_service_ln ?? { valid: null, issues: [] };
   const serviceLines = [
     {
       line: 1,
-      pos: tokens[0] || "",
-      cpt: tokens[1] || "",
-      icd: tokens[2] || "",
-      charge: Number.parseFloat(tokens[3]) || 0,
-      units: tokens[4] || "",
+      pos: parsed.pos,
+      cpt: parsed.cpt,
+      icd: parsed.icd,
+      charge: Number.parseFloat(parsed.charge) || 0,
+      units: parsed.units,
       valid: lineValidation.valid,
       issues: lineValidation.issues,
     },

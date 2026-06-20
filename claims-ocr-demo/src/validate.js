@@ -3,8 +3,10 @@
 // In production the allowlists below would be real code-set tables (looked up via the
 // MCP / query-builder against Teradata/Oracle); here they are small illustrative sets.
 
+import { parseServiceLine } from "./serviceline.js";
+
 const CPT_ALLOW = new Set(["99211", "99212", "99213", "99214", "99215", "99203", "99204", "99205"]);
-const ICD_ALLOW = new Set(["J20.9", "J20.6", "J06.9", "J18.9", "E11.9", "I10", "Z00.00"]);
+const ICD_ALLOW = new Set(["J20.9", "J20.6", "J06.9", "J18.9", "E11.9", "I10", "Z00.00", "Z94.0"]);
 
 // Standard NPI check-digit validation (Luhn over "80840" + first 9 digits).
 export function isValidNpi(npi) {
@@ -21,11 +23,6 @@ export function isValidNpi(npi) {
   }
   const check = (10 - (sum % 10)) % 10;
   return check === Number(npi[9]);
-}
-
-function parseServiceLine(value) {
-  const t = (value || "").trim().split(/\s+/);
-  return { pos: t[0], cpt: t[1], icd: t[2], charge: t[3], units: t[4] };
 }
 
 // Returns { fieldName: { valid, issues:[...] } } for each field in the table.

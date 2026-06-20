@@ -1,5 +1,6 @@
 node_modules/
 samples/
+bundle/
 *.traineddata
 *.traineddata.gz
 .cache/
