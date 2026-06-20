@@ -47,6 +47,8 @@
   tr.zero td.num { color:var(--ok); }
   .tokensum { margin-top:10px; font-size:12px; color:var(--muted); }
   .tokensum b { color:#23231f; }
+  .mtoggle { font-size:11px; padding:1px 6px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; margin:0 1px; }
+  .mtoggle.on { background:#23231f; color:#fff; border-color:#23231f; }
 </style>
 </head>
 <body>
@@ -67,6 +69,8 @@
 <script>
 const SAMPLE_LABELS = { good_scan:"Good scan", small_scan:"Small scan (low-res)", digital:"Digital PDF" };
 let current = "good_scan";
+let costModel = "haiku";
+let currentData = null;
 
 function confChip(c) {
   const cls = c >= 90 ? "ok" : c >= 60 ? "warn" : "bad";
@@ -78,11 +82,16 @@ function validBadge(v) {
   return "";
 }
 function money(n) { return "$" + Number(n).toFixed(2); }
+function money4(n) { return "$" + Number(n).toFixed(4); }
 
 function renderTokens(t) {
   if (!t) return "";
   const rows = t.stages.map(s => `<tr class="${s.tokens===0?'zero':''}">
     <td>${s.stage}</td><td class="num">${s.tokens}</td><td class="muted">${s.note}</td></tr>`).join("");
+  const c = t.cost ? t.cost[costModel] : null;
+  const costLine = c ? `<div class="tokensum">Est. cost
+      <button class="mtoggle ${costModel==='haiku'?'on':''}" data-m="haiku">Haiku</button><button class="mtoggle ${costModel==='sonnet'?'on':''}" data-m="sonnet">Sonnet</button>:
+      <b>${money4(c.pipeline)}</b> / claim &nbsp;·&nbsp; all-vision baseline <b>${money4(c.baseline)}</b></div>` : "";
   return `<div class="panel mt"><h2>Token usage by stage</h2>
     <table>
       <thead><tr><th>Stage</th><th class="num">Tokens</th><th>Note</th></tr></thead>
@@ -91,6 +100,7 @@ function renderTokens(t) {
     </table>
     <div class="tokensum">All-vision baseline (whole page → VLM): <b>~${t.baselineFullPageVision}</b> tokens
       &nbsp;·&nbsp; saved <b>${t.savedVsBaseline}</b> tokens/claim</div>
+    ${costLine}
   </div>`;
 }
 
@@ -110,8 +120,16 @@ async function load() {
   renderTabs();
   document.getElementById("claimImg").src = `/api/image/${current}?t=${Date.now()}`;
   const r = await fetch(`/api/result/${current}`);
-  const d = await r.json();
-  document.getElementById("method").textContent = d.method || "";
+  currentData = await r.json();
+  document.getElementById("method").textContent = currentData.method || "";
+  render();
+}
+
+function setCostModel(m) { costModel = m; render(); }
+
+function render() {
+  const d = currentData;
+  if (!d) return;
   const el = document.getElementById("details");
 
   if (d.textLayer) {
@@ -119,6 +137,7 @@ async function load() {
       <div class="banner ok">Text layer detected — no OCR, no tokens</div>
       <h2>Extracted text</h2><div class="rawtext">${d.rawText.replace(/</g,"&lt;")}</div></div>`
       + renderTokens(d.tokenUsage);
+    el.querySelectorAll(".mtoggle").forEach(b => b.onclick = () => setCostModel(b.dataset.m));
     return;
   }
 
@@ -151,6 +170,7 @@ async function load() {
   </div>`;
 
   el.innerHTML = header + charges + renderTokens(d.tokenUsage);
+  el.querySelectorAll(".mtoggle").forEach(b => b.onclick = () => setCostModel(b.dataset.m));
 }
 load();
 </script>

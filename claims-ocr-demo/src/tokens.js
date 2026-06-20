@@ -2,6 +2,16 @@
 // can appear is an optional vision-model fallback on FLAGGED fields. We estimate
 // that cost (and the "all-vision" baseline) so the savings are visible.
 
+// Claude pricing, $ per 1M tokens (input / output).
+const PRICING = {
+  haiku: { in: 1.0, out: 5.0 },
+  sonnet: { in: 3.0, out: 15.0 },
+};
+function dollars(inputTok, outputTok, model) {
+  const p = PRICING[model];
+  return (inputTok * p.in + outputTok * p.out) / 1e6;
+}
+
 // Anthropic image-token estimate: ~ (w*h)/750, after resizing the long edge to
 // <= 1568px, capped near 1600 tokens per image.
 export function estImageTokens(w, h) {
@@ -39,10 +49,31 @@ export function buildTokenUsage(ocr, needsReview = []) {
   });
 
   const baseline = ocr.pageTokens || 0; // all-vision: send the whole page to a VLM
+
+  // --- dollar-cost estimate ---
+  // Each flagged crop sent to a vision model: image tokens + a little prompt in,
+  // a short value out. All-vision baseline = whole page + prompt in, all fields out.
+  const PROMPT_PER_FIELD = 100;
+  const OUTPUT_PER_FIELD = 30;
+  const flagged = needsReview.length;
+  const fbInput = fallback + PROMPT_PER_FIELD * flagged;
+  const fbOutput = OUTPUT_PER_FIELD * flagged;
+  const baseInput = baseline ? baseline + 200 : 0;
+  const baseOutput = baseline ? 150 : 0;
+  const cost = {};
+  for (const m of Object.keys(PRICING)) {
+    cost[m] = {
+      pipeline: dollars(fbInput, fbOutput, m),
+      baseline: dollars(baseInput, baseOutput, m),
+    };
+  }
+
   return {
     stages,
     total: fallback,
     baselineFullPageVision: baseline,
     savedVsBaseline: Math.max(0, baseline - fallback),
+    flaggedFields: flagged,
+    cost,
   };
 }

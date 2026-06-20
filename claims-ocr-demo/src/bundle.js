@@ -46,8 +46,17 @@ export async function processBundle(dir) {
       charge: model.totalCharge ?? 0,
       needsReview: model.needsReview || [],
       tokens: model.tokenUsage?.total ?? 0,
+      cost: model.tokenUsage?.cost ?? null,
       image: `/api/bundle/image/${slug}`,
     });
+  }
+
+  const tokenCost = { haiku: 0, sonnet: 0 };
+  for (const d of documents) {
+    if (d.cost) {
+      tokenCost.haiku += d.cost.haiku.pipeline;
+      tokenCost.sonnet += d.cost.sonnet.pipeline;
+    }
   }
 
   const grandTotal = documents.reduce((s, d) => s + d.charge, 0);
@@ -59,6 +68,7 @@ export async function processBundle(dir) {
     byProvider: rollup(documents, (d) => d.provider),
     byCategory: rollup(documents, (d) => d.category),
     tokenTotal: documents.reduce((s, d) => s + d.tokens, 0),
+    tokenCost,
     reviewCount: documents.filter((d) => d.needsReview.length > 0).length,
     documents,
   };

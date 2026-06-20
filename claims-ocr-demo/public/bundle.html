@@ -31,6 +31,8 @@
   .badge.bad { background:var(--badbg); color:var(--bad); }
   .badge.warn { background:var(--warnbg); color:var(--warn); }
   a.view { font-size:12px; color:#185fa5; }
+  .mtoggle { font-size:10px; padding:1px 5px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; font-weight:600; }
+  .mtoggle.on { background:#23231f; color:#fff; border-color:#23231f; }
 </style>
 </head>
 <body>
@@ -42,9 +44,18 @@
 
 <script>
 const money = n => "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:2});
+const money4 = n => "$" + Number(n).toFixed(4);
+let costModel = "haiku";
+let bundleData = null;
 
 async function load() {
-  const d = await (await fetch("/api/bundle")).json();
+  bundleData = await (await fetch("/api/bundle")).json();
+  render();
+}
+function setCostModel(m) { costModel = m; render(); }
+
+function render() {
+  const d = bundleData;
   const varCls = d.variance >= 0 ? "pos" : "neg";
   const varTxt = (d.variance >= 0 ? "+" : "") + money(d.variance);
 
@@ -55,6 +66,9 @@ async function load() {
     <div class="card"><div class="k">Documents</div><div class="v">${d.documentCount}</div></div>
     <div class="card"><div class="k">Need review</div><div class="v">${d.reviewCount}</div></div>
     <div class="card"><div class="k">Tokens used</div><div class="v">${d.tokenTotal}</div></div>
+    <div class="card"><div class="k">Token cost
+      <button class="mtoggle ${costModel==='haiku'?'on':''}" data-m="haiku">Haiku</button><button class="mtoggle ${costModel==='sonnet'?'on':''}" data-m="sonnet">Sonnet</button></div>
+      <div class="v">${money4(d.tokenCost[costModel])}</div></div>
   </div>`;
 
   const catRows = d.byCategory.map(c => `<tr><td>${c.key}</td><td class="num">${c.count}</td><td class="num">${money(c.charge)}</td></tr>`).join("");
@@ -85,6 +99,7 @@ async function load() {
           <td></td><td class="num">${d.tokenTotal}</td><td></td></tr></tbody></table></div>`;
 
   document.getElementById("main").innerHTML = cards + rollups + docs;
+  document.querySelectorAll(".mtoggle").forEach(b => b.onclick = () => setCostModel(b.dataset.m));
 }
 load();
 </script>
