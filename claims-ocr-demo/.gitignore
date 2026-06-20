@@ -1,6 +1,7 @@
 node_modules/
 samples/
 bundle/
+uploads/
 *.traineddata
 *.traineddata.gz
 .cache/

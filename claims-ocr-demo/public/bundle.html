@@ -33,6 +33,10 @@
   a.view { font-size:12px; color:#185fa5; }
   .mtoggle { font-size:10px; padding:1px 5px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; font-weight:600; }
   .mtoggle.on { background:#23231f; color:#fff; border-color:#23231f; }
+  .uploadbar { padding:12px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:13px; }
+  .uploadbar button { padding:6px 12px; border:1px solid #23231f; border-radius:8px; background:#23231f; color:#fff; cursor:pointer; font-size:13px; }
+  .uploadbar button.secondary { background:#fff; color:#23231f; }
+  #ustatus { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -40,6 +44,13 @@
   <h1>Transplant Bundle — Billed Charges Roll-up</h1>
   <a href="/">← Single-claim viewer</a>
 </header>
+<div class="uploadbar">
+  <strong>Process a bundle:</strong>
+  <input type="file" id="files" multiple accept="application/pdf" />
+  <button id="processBtn">Upload &amp; process</button>
+  <button id="sampleBtn" class="secondary">Sample bundle</button>
+  <span id="ustatus"></span>
+</div>
 <main id="main">Loading…</main>
 
 <script>
@@ -101,6 +112,28 @@ function render() {
   document.getElementById("main").innerHTML = cards + rollups + docs;
   document.querySelectorAll(".mtoggle").forEach(b => b.onclick = () => setCostModel(b.dataset.m));
 }
+
+function setStatus(t) { document.getElementById("ustatus").textContent = t || ""; }
+
+async function processUpload() {
+  const input = document.getElementById("files");
+  if (!input.files.length) { setStatus("Choose one or more PDF files first."); return; }
+  setStatus("Processing " + input.files.length + " file(s)… OCR can take ~10–30s.");
+  document.getElementById("main").innerHTML = "Processing…";
+  const fd = new FormData();
+  for (const f of input.files) fd.append("files", f);
+  try {
+    const r = await fetch("/api/bundle/upload", { method: "POST", body: fd });
+    const d = await r.json();
+    if (!r.ok || d.error) { setStatus("Error: " + (d.error || r.status)); return; }
+    bundleData = d;
+    setStatus("Processed " + d.documentCount + " document(s) from your upload.");
+    render();
+  } catch (e) { setStatus("Upload failed: " + e); }
+}
+
+document.getElementById("processBtn").onclick = processUpload;
+document.getElementById("sampleBtn").onclick = () => { setStatus("Showing sample bundle."); load(); };
 load();
 </script>
 </body>
