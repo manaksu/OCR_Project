@@ -101,6 +101,60 @@ Weaknesses to design around:
 
 ---
 
+## 4a. Designing the coverflow covers (the readability fix)
+
+**Problem:** a literal thumbnail of a scanned PDF page is unreadable — shrunk
+to ~150px, dense text is just gray blur. So the cover must NOT be a photo of
+the page.
+
+**Reframe:** treat each cover like **album art** — a *synthesized identity
+card* built from the data already captured, designed to be recognized at a
+glance. The scan is the payload you open *after* picking, shown in the
+split-view PDF pane — not the thing you flip through.
+
+### What goes on a synthesized cover
+- **Type color + icon** — the biggest win. Claim forms blue, lab reports red,
+  ID cards green, etc. Users learn the color language fast and recognize a
+  document before reading a word.
+- **A human title** — the document identifier ("Claim CLM-40921"), rendered as
+  real text, not scanned pixels.
+- **2–3 key captured fields** — the ones that distinguish this document from
+  its siblings (member, amount, date).
+- **Page count + status badge** — "3 pages · needs review" visible on the
+  cover itself. Tint low-confidence covers so triage happens while browsing.
+
+### PDF-as-backdrop hybrid (recommended for the focused card)
+Use the real scanned page as a **faded backdrop** for authenticity, with the
+captured details overlaid on a **scrim**. It feels like flipping through real
+documents while staying legible.
+
+Rules that make it work:
+- **The scrim is non-negotiable.** Never put text directly on a scan — stamps,
+  tables, and signatures create unpredictable dark regions that swallow it.
+  Use a solid bottom info-panel (start here — most legible) or a semi-opaque
+  full-card wash (~80% `surface`). Avoid gradient scrims — they flicker during
+  the coverflow transition and fight the flat aesthetic.
+- **Keep the backdrop faint and desaturated** (~12–18% opacity, optionally
+  grayscaled). The page is texture/authenticity here, not information.
+- **Crop to the representative region** — the letterhead or the captured-title
+  bbox — not page-1 top-left. You already have the bounding boxes.
+
+### Tier by card position (also a performance win)
+- **Side cards:** flat designed cover only (colored spine + icon + title). At
+  40° tilt nobody reads them, and loading full page images for every card is
+  wasteful.
+- **Focused/center card:** load the real page backdrop + rich overlay.
+  Lazy-load the full-res page only for the focused card.
+- **Graceful fallback:** if a page image is slow or missing, drop to the flat
+  designed cover — nothing breaks.
+
+**Net:** designed covers everywhere + PDF backdrop on the focused card. You get
+atmosphere where it counts and speed/legibility everywhere else — and a
+designed cover is *more* useful than a readable thumbnail would be, because it
+shows captured, verified data rather than raw ink.
+
+---
+
 ## 5. What matters most at 400-doc scale
 
 1. **Auto-classification is the whole game.** The value is that the system

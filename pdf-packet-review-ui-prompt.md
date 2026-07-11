@@ -54,6 +54,20 @@ the top-level navigator — nobody flips through 400 tilted cards.
      smooth transition on select. No heavy carousel library needed.
    - Arrow buttons + dot indicators as a keyboard-accessible fallback; support
      Tab / Left / Right.
+   - COVERS ARE SYNTHESIZED, NOT PAGE THUMBNAILS. A shrunk scan is unreadable,
+     so build each cover like album art from captured data:
+     type color + icon, a human title (the doc identifier), 2–3 key fields,
+     page count, and a status badge. Tint low-confidence covers.
+   - PDF-as-backdrop hybrid on the FOCUSED card only: render the real scanned
+     page faded (~12–18% opacity, optionally grayscaled) behind the overlay,
+     with the captured details on a SCRIM (a solid bottom info-panel, or a
+     semi-opaque full-card wash — no gradient scrims, they flicker). Prefer
+     cropping the backdrop to the captured-title bbox / letterhead region
+     rather than page-1 top-left.
+   - Tier by position for legibility AND performance: side cards = flat
+     designed cover only (no page image); focused card = backdrop + rich
+     overlay, lazy-loading the full-res page only for that card. If a page
+     image is missing/slow, fall back to the flat designed cover.
 
 3. Split view (main area) — where the work happens.
    - Left: selected document's captured fields with a status badge
