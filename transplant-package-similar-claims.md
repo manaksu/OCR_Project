@@ -56,8 +56,13 @@ happened — **no DRG, no allowed/paid.** That's fine:
 | CPT / HCPCS / PCS procedures | yes | yes | match signal → organ, procedure |
 | Organ type (derived) | yes (from codes) | yes | hard scope filter |
 | Donor type (derived) | yes (from codes) | yes | signal / filter |
-| DRG | no | yes | OUTPUT — what the match tells you |
+| DRG | no | not accessible yet | OUTPUT (future) — wired, disabled until DRG access |
 | Allowed / paid / pricing | no | yes | OUTPUT — the benchmark you're after |
+
+Note: with MS-DRG unavailable, the benchmark output is carried by
+**allowed/paid pricing** on the matched historical episodes; DRG is added as an
+extra output field once access is granted. Detection and matching do not depend
+on DRG.
 
 **Why this feature exists:** you have an un-priced transplant package and want
 clinically-similar *historical* episodes so their DRG and pricing become your
@@ -101,8 +106,9 @@ it. Query time = signature-vs-signature, no re-derivation.
 - **Hard filter:** same organ (kidney↔kidney); optionally donor type.
 - **Rank:** indication ●●● · procedure concept ●● · complication overlap ●● ·
   code-set overlap ●.
-- **Return** top-N historical episodes, each carrying its DRG + allowed/paid as
-  the benchmark output, with `✓ organ / ✓ indication / ≠ donor` explanations.
+- **Return** top-N historical episodes, each carrying its **allowed/paid** as the
+  benchmark output (DRG added as an extra output field once access is granted),
+  with `✓ organ / ✓ indication / ≠ donor` explanations.
 
 ---
 
@@ -136,14 +142,15 @@ Package claims:
   CMS-1500: CPT 50360, 50340 ; dx N18.6, Z94.0
 
 → Signature:
-  organ         = kidney            (from 50360 / 0TY00Z0)
+  organ         = kidney            (from 50360 / 0TY00Z0)   ← PCS/CPT, no DRG needed
   indication    = ESRD  (CCSR GEN003)
   procedure     = deceased-donor kidney transplant, recipient
   donor         = deceased          (acquisition + qualifier)
   complications = none
 
 → Match: corpus kidney episodes, ESRD indication, deceased donor
-→ Results carry MS-DRG 652 + allowed amounts  ← pricing benchmark
+→ Results carry allowed/paid amounts  ← pricing benchmark
+   (MS-DRG 652 added as an extra output field once DRG access is granted)
 ```
 
 ---
@@ -175,19 +182,38 @@ and most reliable signals first.
 
 ### Step 1 — land the major inpatient (index) claim
 
-Filter to institutional inpatient (**Type of Bill `011x`**), then match on
-either signal:
+> **MS-DRG not used yet.** MS-DRG data is not currently accessible. Detection
+> below stands entirely on ICD-10-PCS, CPT, revenue, and diagnosis codes — all
+> available on the coded claims today. MS-DRG is wired into the framework as an
+> optional confirmatory signal (and as a benchmark output) but stays **disabled
+> until DRG access is granted**. Nothing in the current path depends on it.
+
+Filter to institutional inpatient (**Type of Bill `011x`**), then match on the
+**primary signal**:
 
 - **ICD-10-PCS root operation `Y` (Transplantation)** — the cleanest single
-  signal. The 3rd character of the PCS code is `Y` for every transplant
-  regardless of organ, and the body-system character tells you the organ:
-  `0TY..` kidney, `0FY..` liver, `02Y..` heart, `0BY..` lung, `0FYG..` pancreas.
-  One rule catches all organs and identifies the organ.
+  signal, present on the inpatient UB. The 3rd character of the PCS code is `Y`
+  for every transplant regardless of organ, and the body-system character tells
+  you the organ: `0TY..` kidney, `0FY..` liver, `02Y..` heart, `0BY..` lung,
+  `0FYG..` pancreas. One rule catches all organs and identifies the organ.
+
+Supporting / cross-check signals (also available today):
+
+- **Transplant CPT/HCPCS** — `50360` kidney, `47135` liver, `33945` heart,
+  `32851–54` lung, `48160/48554` pancreas. Confirms the organ and helps when the
+  transplant is visible on a professional claim.
+- **Organ-acquisition revenue code `081x`** on the inpatient claim (see Step 2).
+- **Transplant-status / indication diagnoses** — `Z94.x`, plus the organ's
+  indication dx.
+
+Optional (enable when DRG access is available):
+
 - **Transplant MS-DRG** — `652` kidney, `005–006` liver, `001–002` heart,
-  `007–008` lung, `010` pancreas, `014/016/017` marrow.
+  `007–008` lung, `010` pancreas, `014/016/017` marrow. Confirmatory only; not
+  required to detect the index claim.
 
 If more than one inpatient claim qualifies, "major" = the one carrying the
-transplant PCS/DRG (and highest charges). Usually there is a single transplant
+transplant PCS (and highest charges). Usually there is a single transplant
 admission.
 
 ### Step 2 — find the donor / organ-acquisition claim
@@ -267,13 +293,17 @@ with confidence, then expand to the full episode with the DOS window. Auth
 
 ## 7. Reference — transplant coding anchors
 
-| Organ | MS-DRG (output) | Transplant CPT | ICD-10-PCS | Typical indication (dx → CCSR) |
+Primary detection uses **ICD-10-PCS** (inpatient) and **CPT** (professional).
+The MS-DRG column is included for the framework but is **not used until DRG
+access is granted**.
+
+| Organ | ICD-10-PCS (primary) | Transplant CPT | MS-DRG (future) | Typical indication (dx → CCSR) |
 |---|---|---|---|---|
-| Kidney | 650–652 | 50360, 50365, 50340 | 0TY00Z0 / 0TY10Z0 | N18.6 ESRD |
-| Liver | 005–006 | 47135 | 0FY00Z0 | K74.x cirrhosis · C22.0 HCC |
-| Heart | 001–002 | 33945 | 02YA0Z0 | I50.x HF · I42.x cardiomyopathy |
-| Lung | 007–008 | 32851–32854 | 0BYx0Z0 | J84.1 fibrosis · J44 COPD · E84 CF |
-| Pancreas / SPK | 008, 010 | 48160, 48554 | 0FYG0Z0 | E10.x diabetes + ESRD |
+| Kidney | 0TY00Z0 / 0TY10Z0 | 50360, 50365, 50340 | 650–652 | N18.6 ESRD |
+| Liver | 0FY00Z0 | 47135 | 005–006 | K74.x cirrhosis · C22.0 HCC |
+| Heart | 02YA0Z0 | 33945 | 001–002 | I50.x HF · I42.x cardiomyopathy |
+| Lung | 0BYx0Z0 | 32851–32854 | 007–008 | J84.1 fibrosis · J44 COPD · E84 CF |
+| Pancreas / SPK | 0FYG0Z0 | 48160, 48554 | 008, 010 | E10.x diabetes + ESRD |
 
 Donor type: living vs deceased from acquisition revenue/HCPCS codes and PCS
 qualifiers. Re-transplant / status: `Z94.x` (transplant status), `T86.x`
