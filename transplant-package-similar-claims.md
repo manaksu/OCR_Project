@@ -420,6 +420,80 @@ injection guidance applies.
 
 ---
 
+## 7b. Research feature — embedding the episode benchmark in the review UI
+
+This capability is surfaced as a **research feature** inside the existing
+transplant package review screen (the navigator + coverflow + captured-data /
+source-PDF split from `pdf-packet-review-design.md`). It is decision-support /
+reference for pricing an un-adjudicated package — clearly labeled *research*,
+not an automated determination (important for the audit trail).
+
+### Placement — a package-level header, not a panel
+
+The existing review screen has three panels, each scoped narrower than this
+action:
+
+- Navigator = per document *group*
+- Captured data + Source PDF = per *claim*
+- Research = per *whole package / episode*
+
+So it does not belong in any existing panel. Add a **full-width package header
+bar** above the navigator + main area, carrying the package identity (patient,
+organ, claim count, un-adjudicated status — currently missing from the screen)
+and, on the right, a **`Research similar episodes`** button. The three panels
+are untouched.
+
+- **Contextual visibility:** show the Research button only for claim/transplant
+  packages worth benchmarking; it is meaningless for a generic document packet.
+  The header identity is always useful; the action is conditional on package
+  type.
+- **Alternatives** if a top bar doesn't fit the chrome: pin the button to the
+  navigator footer (the rail also represents the whole package), or a
+  stage-based "Research" tab. Header bar preferred — most discoverable and it
+  fills the missing package-identity gap.
+
+### Interaction — a drawer over the packet, NOT expand-below
+
+Clicking the button opens a **right-side drawer** (same paradigm as the
+per-claim similar-claims drawer); the packet review dims behind a scrim and
+stays on screen.
+
+Why not expand-below: the header spans full width, so expanding beneath it
+pushes the entire workspace (navigator + coverflow + captured data + PDF) down
+and off-screen — you lose the very package you're benchmarking against, and the
+research content is tall (long-scroll hybrid page). The drawer overlays without
+destroying layout and keeps the package visible.
+
+- Use a drawer when research happens **while** reviewing (glance, keep working)
+  — the default.
+- Use a dedicated **"Research" view/tab** only if it's a separate "leave and
+  come back" task. Expand-below is acceptable only as a *small peek* (benchmark
+  number + top 3, with "see all" opening the drawer).
+- On narrow / mobile screens the drawer becomes a full-screen sheet. Drawer
+  width ~55–65% — the benchmark metrics and episode rows need the room.
+
+### Drawer contents (top to bottom)
+
+1. **Derived episode signature — editable, with confidence.** Shows what the
+   package rolled up into (organ, indication, procedure, donor, complications).
+   Extraction from scanned claims isn't perfect and this signature is *the*
+   search input, so the examiner confirms/corrects it before trusting results.
+2. **Pricing benchmark — the headline output.** Median allowed, P25–P75 range,
+   and n across the matched episodes. Since the goal is pricing an un-adjudicated
+   package, the benchmark is the answer; the ranked list below is the evidence.
+3. **Organ-locked filter + lens.** A visible `🔒 Kidney` chip makes the hard
+   scope filter explicit (kidney benchmarked only against kidney), with lenses
+   (Clinically similar) refining within it.
+4. **Ranked historical episodes.** Each shows organ · indication · donor ·
+   allowed amount, a match %, self-explaining reason chips
+   (`✓ organ / ✓ indication / ≠ complications`), and **`Compare ↗`** →
+   episode-level side-by-side diff (this package vs the historical episode).
+
+This reuses the drawer, lens/scope, explainability, and diff patterns from
+`similar-claims-ui-design.md`, specialized to the episode level.
+
+---
+
 ## 8. Open questions to lock the build
 
 1. **Is the corpus already episode-grouped**, or is per-claim all we have (i.e.
