@@ -333,6 +333,55 @@ qualifiers. Re-transplant / status: `Z94.x` (transplant status), `T86.x`
 
 ---
 
+## 7a. Backend fetch — staged, not one monolithic SQL
+
+A single query for episode assembly + similarity will clog and die. The linkage
+mechanisms use **different keys** (recipient = patient ID + DOS; auth = auth
+number; donor = `081x` / case / coverage), so one statement means `OR`-ing
+across unindexed predicates and multi-way joins over the whole warehouse — the
+optimizer can't use indexes, spool blows up, skew, and it runs forever. Ranking
+on top of that in the same query is the killer.
+
+Instead, orchestrate **staged, narrowing fetches** in the app tier — each step
+small, selective, and index-friendly:
+
+1. **Find the index claim** — one selective query (TOB `011x` + PCS root-op
+   `Y`). ~1 row. Fast, indexed.
+2. **Read anchors** (app tier, no DB) — patient ID, admit/discharge dates,
+   organ, auth(s).
+3. **Parallel targeted fetches**, each keyed on ONE thing:
+   - **Recipient track** — patient ID + DOS window (one patient, bounded dates).
+   - **Auth track** — by auth number(s) (small, exact).
+   - **Donor track** — the four rules from Step 2, each its own targeted query.
+4. **Merge · dedup · tag** (app tier) — union by claim ID, attach provenance +
+   confidence. Not in SQL.
+5. **Signature + rank** — separate step, against **precomputed** corpus
+   signatures.
+
+### Teradata-specific levers
+
+- **Driver-table pattern.** Stage anchor keys (patient ID, date range, auth
+  list, donor keys) into a **volatile/temp table**, then have each fetch *join
+  to that small driving set* rather than `OR`-ing predicates across the big
+  table. A small driver joined to a big indexed table is what the optimizer
+  wants — avoids full scans and spool blowups.
+- **Precompute corpus signatures offline** (the single biggest lever). Never
+  derive signatures from raw claims at query time. A batch job materializes one
+  signature row per historical episode, indexed by organ. Online, similarity is
+  a lookup + nearest-neighbor on a small table, not a live warehouse scan.
+- **Bounded, cancelable steps.** Each stage has its own timeout and retries
+  independently; one slow donor sub-query doesn't kill the assembly — degrade to
+  partial results and backfill.
+- **Cache the candidate pool.** Fetch candidate episodes once, then re-rank
+  lenses/chips in the app tier — no re-query per toggle (see
+  `similar-claims-ui-design.md` §9).
+
+Net: a chain of small, index-friendly queries orchestrated by a service, with
+intermediate materialization — not one heroic statement that spools itself to
+death.
+
+---
+
 ## 8. Open questions to lock the build
 
 1. **Is the corpus already episode-grouped**, or is per-claim all we have (i.e.
