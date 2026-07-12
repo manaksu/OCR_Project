@@ -380,6 +380,44 @@ Net: a chain of small, index-friendly queries orchestrated by a service, with
 intermediate materialization — not one heroic statement that spools itself to
 death.
 
+### Dictionary-driven dynamic SQL
+
+SQL is generated at runtime from available data, driven by an existing Teradata
+dictionary (logical field → physical column) already used for claims fetch.
+Dynamic SQL is the right fit for "match on the intersection of available
+fields," but it must reinforce the staged pipeline, not recreate the monolith:
+
+- **Generate SQL per stage, not one adaptive mega-query.** The dictionary tells
+  you which linkage keys exist/are populated for this episode; build stage
+  3a/3b/3c only for the tracks that actually have keys. Same narrowing pipeline,
+  each stage's SQL generated rather than static.
+- **Dictionary as the availability gate.** Per field, carry two flags — *exists
+  in this source?* and *reliably populated?* Include a predicate/facet only when
+  both are true, for BOTH seed and corpus. The field intersection is then
+  computed from the dictionary, not hardcoded — this is exactly how the
+  un-adjudicated / DRG-absent case is handled: DRG isn't "available," so the
+  builder omits it, no special-casing.
+- **Parameterize; don't concatenate literals.** Build the SQL *structure*
+  dynamically but pass values via `USING` / bind variables. Teradata caches
+  request plans keyed on SQL text — inlined literals (a patient ID or date per
+  call) churn the plan cache and re-parse every time; bind variables let the
+  same generated shape reuse its plan, and close the injection door.
+- **Code sets in reference tables, not runtime `IN (...)` lists.** Keep
+  transplant codes in a lookup table (`code, code_type, organ, role`) and have
+  the generated SQL JOIN to it. Don't emit a 200-element `IN` list — it bloats
+  SQL text, defeats plan reuse, and can hit statement-size limits. Combine with
+  the volatile driver-table pattern: stage keys once, join generated fetches to
+  them.
+- **Tag generated queries** (query banding) so each stage is attributable in
+  DBQL — dynamic SQL is harder to govern, and per-stage cost visibility matters
+  when one episode's fetch misbehaves.
+
+Open items on the dictionary itself: (a) does it carry populated/quality flags
+per field/source, or only logical→physical mapping? (b) does the layer already
+parameterize, or build SQL by string concatenation? These decide how directly
+the intersection logic can key off the dictionary and how much the plan-cache /
+injection guidance applies.
+
 ---
 
 ## 8. Open questions to lock the build
