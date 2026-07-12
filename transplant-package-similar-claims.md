@@ -492,6 +492,50 @@ destroying layout and keeps the package visible.
 This reuses the drawer, lens/scope, explainability, and diff patterns from
 `similar-claims-ui-design.md`, specialized to the episode level.
 
+### Iconography and styling (keep consistent with the other screens)
+
+The research feature must look and feel identical to the packet review and the
+similar-claims drawer — same icon set, same tokens, same page styling. Do not
+introduce a new visual language for it.
+
+**Icons — Tabler outline only** (never `-filled` variants; they render blank):
+
+| Element | Icon | Notes |
+|---|---|---|
+| Research feature trigger | `ti-flask` | the header button and drawer title |
+| Organ-locked scope filter | `ti-lock` | on the `🔒 Kidney` chip |
+| Lens · Clinically similar | `ti-stethoscope` | |
+| Lens · Financially similar | `ti-currency-dollar` | |
+| Compare / pivot to diff | `ti-arrow-up-right` (↗) | trailing arrow on the button |
+| Close drawer | `ti-x` | secondary text color |
+| Edit signature | `ti-edit` (or plain "edit" link) | on the derived signature |
+| Claim/document covers | `ti-file-invoice` · `ti-photo` · `ti-id` · `ti-clipboard-text` · `ti-receipt` · `ti-notes` | reuse the packet-review cover icons |
+| Match reason — matches | `✓` | on `--bg-success` / `--text-success` |
+| Match reason — differs | `≠` | on `--surface-1` / `--text-secondary` |
+| Value higher / lower (diff) | `↑` / `↓` | inline with the differing value |
+
+Icon usage: 11–20px inline; icons inherit color + size from the parent;
+decorative icons get `aria-hidden="true"`; icon-only buttons get an
+`aria-label`. See also `similar-claims-ui-design.md` §8 (shared icon table).
+
+**Page / component styling — the shared design system:**
+
+- Flat surfaces, no gradients/shadows beyond functional elevation. Cards:
+  `var(--surface-2)`, `0.5px solid var(--border)`, `12px` radius; controls use
+  `var(--radius)`.
+- **Metric cards** for the benchmark numbers (`var(--surface-1)`, no border,
+  small muted label above, larger value below) — same as elsewhere. Round every
+  displayed number.
+- **Status badges** (verified / needs review / low quality; match %) use the
+  role tints: `--bg-success/-warning/-danger` with the matching `--text-*`.
+- **Accent** (`--bg-accent` / `--text-accent`) reserved for the research/primary
+  affordances (the header button, active lens, organ-lock chip).
+- The **drawer + scrim** is the same component as the similar-claims drawer; the
+  claim **covers** reuse the designed-cover cards from
+  `pdf-packet-review-design.md` §4a.
+- Sentence case everywhere; two font weights (400 / 500); text on colored fills
+  uses the darker shade of the same family, never plain black/gray.
+
 ---
 
 ## 8. Open questions to lock the build
