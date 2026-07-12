@@ -218,15 +218,37 @@ admission.
 
 ### Step 2 — find the donor / organ-acquisition claim
 
-The signal is **revenue code `081x`**: `0810` general, `0811` living donor,
-`0812` cadaver donor, `0813` unknown donor, `0814` unsuccessful search,
-`0815` cadaver organ(s).
+**The donor is a different person than the recipient**, so donor claims CANNOT
+be linked by patient ID, and "same hospital" is only a weak signal (deceased-
+donor organs are recovered at the donor's hospital by an OPO and shipped;
+acquisition costs flow to the transplant center's cost center). Use a separate
+**donor linkage track**.
 
-Important: acquisition is often billed **as a revenue line on the recipient's
-inpatient claim**, not as a separate claim — so check `081x` lines *inside* the
-index claim AND for standalone acquisition claims. Supporting signals: donor
-CPT (backbench `50323–50329` kidney / `47143–47147` liver, donor nephrectomy
-`50300` cadaver / `50320` living / `50547` laparoscopic living).
+Donor-claim signals: **revenue code `081x`** (`0810` general, `0811` living
+donor, `0812` cadaver donor, `0813` unknown, `0814` unsuccessful search, `0815`
+cadaver organ(s)) and donor CPT (backbench `50323–50329` kidney / `47143–47147`
+liver; donor nephrectomy `50300` cadaver / `50320` living / `50547` lap living).
+
+**It can be both ways** (acquisition bundled on the recipient UB *or* a separate
+claim; living-donor care billed under the recipient's coverage *or* standalone),
+so **run all linkage rules, union the hits, dedup, and tag each with how it was
+linked + a confidence** — don't assume one flow:
+
+| Rule (priority) | How it links | Confidence |
+|---|---|---|
+| 1. Bundled on index | `081x` lines *inside* the recipient inpatient claim → it IS the index claim | certain |
+| 2. Transplant case / auth | a case ID or auth spanning donor + recipient | high |
+| 3. Recipient coverage cross-ref | recipient's member/policy is the payer on the donor claim (living donor under recipient benefit), even though the patient is the donor | high |
+| 4. Date + code proximity | donor codes (`081x` / donor nephrectomy / backbench) near the index admit date | low — require a second corroborating signal |
+
+Rule 4 alone can pull in an unrelated nearby donor claim — never accept it
+without corroboration (case/auth, coverage, or facility).
+
+**Discovery step (because it's unknown):** on a sample of real transplant
+episodes, count which pattern actually occurs and how often — bundled vs
+separate acquisition, and living-donor-under-recipient-coverage vs standalone.
+That tells you which rules carry the weight and where false positives hide, and
+lets you tune before trusting the assembly.
 
 ### Step 3 — read the anchors off the index claim
 
@@ -319,3 +341,10 @@ qualifiers. Re-transplant / status: `Z94.x` (transplant status), `T86.x`
    to reuse?
 3. **Confirm the corpus stores raw codes** on each historical claim (so its
    signature is computed the same raw way as the seed).
+4. **Donor acquisition pattern** — is it bundled on the recipient UB (rev
+   `081x`) or filed as separate acquisition claims? (Can be both — measure the
+   mix; see Step 2 discovery.)
+5. **Living-donor billing** — are donor claims billed under the recipient's
+   coverage (recipient member ID present) or fully standalone under the donor?
+6. **Is there a transplant case/auth ID** that spans donor + recipient (the
+   cleanest donor link)?
