@@ -538,6 +538,76 @@ decorative icons get `aria-hidden="true"`; icon-only buttons get an
 
 ---
 
+## 7c. Episode composition — presenting the grouped claims
+
+When research returns an episode (and for the seed package itself), present the
+claims as an **anchor + grouped related claims with a cost roll-up**, not a flat
+list. The same component renders both the seed package and each matched
+historical episode, so `Compare ↗` diffs two identically-structured
+compositions group against group.
+
+### Structure
+
+1. **Episode header** — identity (episode/organ/indication), claim count, day
+   span, and the **episode total allowed** (the headline for a pricing
+   benchmark).
+2. **Anchor card — the main UB (index) claim**, visually set apart (accent
+   card), not just the first row. Shows facility, admit→discharge DOS range,
+   transplant PCS, and its allowed amount. Everything else hangs off it.
+3. **Related claims grouped by clinical role** — Organ acquisition ·
+   Professional · Labs · Follow-up/readmit. Each group is **collapsible** with a
+   **count + cost subtotal**, rolling up to the episode total. Subtotals show
+   *where the money is* (acquisition vs facility vs professional vs follow-up) —
+   the actual benchmark insight.
+4. **Linkage tag per claim** — the assembly provenance (`on index (081x)`,
+   `auth`, `DOS window`, `Z94/T86`). Two purposes: **trust** (why is this claim
+   in the episode?) and **correction** (a mis-linked claim, e.g. pulled in by
+   the weak DOS-window rule, is visible and can be excluded).
+
+### Behavior
+
+- **Collapse noisy groups by default** (labs, follow-up — many low-value
+  claims) to a count + subtotal; keep the anchor and big-ticket groups
+  (acquisition, facility) front and center. Expand on demand.
+- **Grouping axis:** default to **role** (acquisition / professional / labs —
+  best for the cost breakdown); offer **phase** (pre / admission / post — the
+  timeline story) as an optional toggle. Data supports both.
+- **Exclude-and-recompute (optional):** let the examiner drop a mis-linked claim
+  and have the roll-up + benchmark update live. Powerful, but makes the roll-up
+  interactive rather than static — decide if that's in scope.
+
+### Iconography (Tabler outline only)
+
+| Element | Icon |
+|---|---|
+| Index / main UB (anchor) | `ti-building-hospital` |
+| Organ acquisition group | `ti-transfer-in` |
+| Professional group / row | `ti-stethoscope` (group) · `ti-user` (row) |
+| Labs group | `ti-test-pipe` |
+| Follow-up / readmit group | `ti-calendar` |
+| Collapse / expand group | `ti-chevron-down` (rotates) |
+
+11–20px inline; inherit color + size; decorative icons `aria-hidden`, icon-only
+buttons get `aria-label`. Consistent with §7b and `similar-claims-ui-design.md`
+§8.
+
+### Styling
+
+- **Anchor card:** `2px` (accent exception) `--border-accent` + `--bg-accent`,
+  12px radius — the only emphasized card; sibling group cards use the standard
+  `0.5px --border`.
+- **Group cards:** `--surface-2`, `0.5px --border`, 10–12px radius; clickable
+  header row with count (muted) + subtotal (weight 500).
+- **Linkage tags:** small pills — provenance-neutral on `--surface-1` /
+  `--text-secondary`; `auth` and `on index` may use `--bg-success` /
+  `--bg-accent` to signal high-confidence links.
+- **Amounts:** right-aligned, weight 500, always rounded (`toLocaleString` /
+  currency). Subtotals and the episode total must reconcile.
+- Flat surfaces, sentence case, two font weights — same system as every other
+  screen. No new visual language.
+
+---
+
 ## 8. Open questions to lock the build
 
 1. **Is the corpus already episode-grouped**, or is per-claim all we have (i.e.
