@@ -92,6 +92,56 @@ Each card carries `Know more` and `Similar claims` actions.
 
 ---
 
+## 0a. Visual style — minimalist, monochrome
+
+The chosen visual language is **minimalist and colorless**. Meaning is carried
+by typography, whitespace, and quiet outline icons — never by color. This is the
+shared style for all screens; where earlier sections show colored badges,
+accent chips, or role tints, prefer the neutral treatment below.
+
+**Palette — neutrals only.** Use `--text-primary`, `--text-secondary`,
+`--text-muted`, `--surface-2`, `--border` / `--border-strong`. No accent color,
+no success/warning/danger tints, no filled colored chips.
+
+**Color never encodes meaning — icon + label + position do.** Status is shown by
+a *different outline icon* plus a muted word, all in neutral tone:
+
+| Status | Icon (monochrome) | Label |
+|---|---|---|
+| Verified | `ti-circle-check` | verified |
+| Needs review | `ti-alert-circle` | needs review |
+| Low quality | `ti-help-circle` | low quality |
+
+The user distinguishes them by icon shape and text, not by red/amber/green.
+Likewise match reasons render as plain `✓` / `≠` marks in neutral tone, not
+green/gray pills.
+
+**Typography does the hierarchy.** Two weights only (400 / 500) and size/space
+carry emphasis: the claim id at 14px/500, meta at 12px/muted, the LLM summary at
+~13.5px/primary as the hero line, facets at 12px/secondary. No bold-for-emphasis
+beyond the weight-500 headings.
+
+**Structure — hairlines and whitespace, not boxes.** Prefer list items separated
+by a `0.5px --border` rule with generous padding over bordered cards; drop the
+card boxes where you can. Never a column grid — facets are a quiet dot-separated
+line (`Dx E11.9 · CPT 99213 · billed $2,480`).
+
+**Icons — Tabler outline, quiet, monochrome.** 14–16px inline, inherit the
+parent's (usually muted/secondary) color; never `-filled`. Icons support the
+text, they don't decorate. Decorative icons `aria-hidden`; icon-only controls
+get `aria-label`. Keep the semantic set from §8, just rendered in neutral tone.
+
+**Actions — text links, not buttons.** `Know more` / `Similar claims` are quiet
+text with a small leading outline icon in `--text-secondary`; hover lifts to
+`--text-primary` with a `--border-strong` underline. No accent fills.
+
+**Restraint.** Fewer borders, more whitespace; the quieter option wins. Sentence
+case everywhere. The one place a single hairline-boxed emphasis is still allowed
+is a true anchor (e.g. the episode index claim) — and even there, use a slightly
+heavier border, not a fill.
+
+---
+
 ## 1. The flow
 
 1. **Generic ask → sample.** User asks something like "give me 5 professional
