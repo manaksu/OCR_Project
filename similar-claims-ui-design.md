@@ -10,6 +10,88 @@ review → find similar).
 
 ---
 
+## 0. App shell — chat-driven canvas
+
+The app is two panes: a **chat area** (ChatKit) and a **work area** (the main
+page). The governing principle:
+
+> **Chat is just a driver. All events happen on the right (the workspace).**
+
+Chat is the command / follow-up layer; the workspace holds all content. Every
+chat turn that yields data sets what the workspace shows.
+
+### Canvas = single focus + a shallow view stack
+
+The workspace shows one focus at a time and navigates a small stack, with a
+breadcrumb:
+
+```
+collection view  →  detail view   →  related view
+(5 claims)          (Know more)       (similar claims)
+5 claims → CLM-40921 → detail / similar
+```
+
+Chat can jump to any node ("explain CLM-40921", "similar to CLM-40921"). Canvas
+controls (`Know more`, `Similar claims`) do the same by **posting the follow-up
+back into chat** — one source of truth, driven two ways. `Know more` and
+`Similar claims` are symmetric: both are chat-triggered commands whose *output*
+renders in the workspace, just different nodes of the same stack.
+
+### Two levels of LLM interpretation
+
+1. **List level (cheap, scannable) — one clinical sentence per claim.** On
+   fetch, the LLM writes a plain-language gist of each claim's clinical features
+   ("routine cardiology visit for a diabetic; level-3 E/M with basic labs") —
+   not a code dump. That single line is what makes the view feel crisp instead
+   of like a spreadsheet.
+2. **Detail level (on demand) — `Know more` → full explanation.** Opens the
+   detail view where the LLM explains the claim in depth (what the dx/procedure
+   mean in plain terms, why the codes go together, anything notable — cost
+   outlier, unusual combo). Prose-forward, still no table.
+
+Keep them separate: don't run the deep explanation for all N up front (slow,
+costly) — one-liners for the list, rich explanation only when asked.
+
+### Answers in the workspace, questions in chat
+
+Because chat is only a driver, substantive output never lives in the thread:
+
+| Response type | Where it goes |
+|---|---|
+| Substantive / structured / reference-worthy (explanation, comparison, claim detail, similar claims) | **Workspace** |
+| Ephemeral conversational glue ("filtered to cardiology", "found 5", "which one?") | **Chat** |
+
+Rule of thumb: *does it have lasting reference value?* Yes → workspace, no →
+chat. Follow-up questions ("why is the billed amount high?") are asked in chat
+but their **answers update the workspace detail view** (append a section,
+highlight a field) — keeping the claim context intact and everything about one
+claim in one place. Chat gets only a short pointer ("Explaining CLM-40921 in the
+workspace"), which doubles as the breadcrumb/history. One pragmatic exception: a
+one-word clarification ("yes, in-network") can answer inline in chat — don't
+force a workspace transition for it.
+
+### Card style — crisp, not Excel
+
+Cards, not rows. The LLM's one-line clinical summary is the hero of each card;
+facets (`Dx E11.9 · CPT 99213 · billed $2,480`) sit below as a quiet
+dot-separated line, never a column grid. Generous whitespace, typographic
+hierarchy, the designed-cover styling from `pdf-packet-review-design.md` §4a.
+Each card carries `Know more` and `Similar claims` actions.
+
+### Implementation notes
+
+- **Stream the interpretations.** Render cards immediately from the fetched
+  structured data (id, type, facets), then stream the LLM one-liner into each
+  card with a skeleton placeholder — the canvas populates instantly, prose fills
+  in.
+- **Ground the LLM to avoid clinical hallucination.** Feed it the structured
+  captured fields and have it interpret only those ("based on the coded data");
+  it describes what the codes are, not invents clinical narrative. Keep the
+  deeper `Know more` explanation cautious. (Wire the latest Claude model here;
+  spec separate prompts for the list one-liner vs the deep explanation.)
+
+---
+
 ## 1. The flow
 
 1. **Generic ask → sample.** User asks something like "give me 5 professional
