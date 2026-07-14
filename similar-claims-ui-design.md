@@ -140,6 +140,83 @@ case everywhere. The one place a single hairline-boxed emphasis is still allowed
 is a true anchor (e.g. the episode index claim) — and even there, use a slightly
 heavier border, not a fill.
 
+### Applying it to the claim listing
+
+Converting the colored listing to monochrome:
+
+- Type chip (`Cardiology · 837P` on a colored fill) → plain grey **meta text**.
+- Status dot (green/amber/red) → **mono outline icon + muted label** per the
+  status table above (`ti-circle-check` / `ti-alert-circle` / `ti-help-circle`),
+  distinguished by icon shape, not color.
+- `Know more` / `Similar claims` blue links → **quiet grey text links** with a
+  leading outline icon.
+- Everything reads in greys; hierarchy comes from type size/weight and space.
+
+---
+
+## 0b. Claim explanation — CIW vs AI (dual-source, pick one)
+
+`Know more` / "explain" opens the claim detail view with **two interpretations
+shown side by side** and a user choice:
+
+- **Enterprise CIW** — tagged *system of record*. The authoritative,
+  enterprise-authored interpretation.
+- **AI interpretation** — tagged *generated from coded data*. The plain-language
+  read (grounded to the coded fields per §0).
+
+### Why both
+
+The provenance tags tell the examiner *what they're trusting* — the official
+enterprise interpretation vs. the AI's plain read. Showing both, equal weight,
+makes the choice explicit. The two are deliberately different in voice (CIW
+terse and coding-official; AI narrative and plain) — that contrast is the reason
+to offer a choice. When they materially disagree, surface a subtle "sources
+differ" note; a mismatch is itself a signal worth seeing.
+
+### Selection — colorless
+
+- The chosen panel: **heavier neutral border** (`1.5px --text-muted`) + a
+  `ti-check` + **"Selected"** label (weight 500).
+- The other panel: a quiet **"Use this instead"** text link with an empty
+  `ti-circle`. Radio-style semantics in pure greyscale (no color).
+- **The pick is recorded with the claim** (flows downstream / into the audit
+  trail); the view states it's saved. Decide: per-claim pick, or a global
+  default ("prefer CIW, AI secondary").
+
+### Layout
+
+- Breadcrumb (`5 claims › CLM-40921 › explanation`), claim header (id · meta ·
+  mono status), facets line, then the `Explanation — choose a source` label and
+  the two equal side-by-side panels.
+- Each panel: source icon + name + provenance tag, the explanation body, and the
+  select control beneath a hairline divider.
+- Follow-ups ("go deeper on either") happen in chat, per the app shell (§0).
+
+### Iconography (Tabler outline, monochrome)
+
+| Element | Icon |
+|---|---|
+| Enterprise CIW source | `ti-building-warehouse` |
+| AI interpretation source | `ti-sparkles` |
+| Selected (chosen source) | `ti-check` |
+| Unselected (choose it) | `ti-circle` |
+| Claim status · verified | `ti-circle-check` |
+| Claim status · needs review | `ti-alert-circle` |
+| Explain (from card / chat) | `ti-message-2` |
+| Full details | `ti-list-details` |
+
+All 14–17px inline, inherit muted/secondary tone; never `-filled`; decorative
+icons `aria-hidden`, icon-only controls `aria-label`.
+
+### Open items
+
+- **What is CIW** exactly — a stored, human/rules-authored explanation from the
+  enterprise Clinical Information Warehouse, or a different derived field? (Sets
+  whether AI should reconcile with it or stay independent.)
+- **Default + when AI shows** — always render both side by side, or lead with
+  CIW and reveal AI on request? Side-by-side when a real choice is expected;
+  CIW-primary if AI is just a fallback.
+
 ---
 
 ## 1. The flow
